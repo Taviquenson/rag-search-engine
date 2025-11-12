@@ -1,5 +1,5 @@
 from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies
-
+import string
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     movies = load_movies()
@@ -16,4 +16,11 @@ def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
 
 def preprocess_text(text: str) -> str:
     text = text.lower()
+
+    # str.translate() returns a copy of a string where characters have been replaced or removed based on a translation table
+    # Static method str.maketrans() creates a translation table
+    # string.punctuation is a string of ASCII characters which are considered punctuation characters in the C locale:
+    # !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~.
+    # Empty translation table that simply eliminates the group of characters from the third argument
+    text = text.translate(str.maketrans("", "", string.punctuation))
     return text
