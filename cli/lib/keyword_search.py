@@ -15,7 +15,8 @@ from .search_utils import (
 
 class InvertedIndex:
     def __init__(self) -> None:
-        self.index = defaultdict(set)
+        self.index = defaultdict(set) # Is like a dict but auto-creates a default value when a missing key is accessed
+                                      # Here, each new key gets a set() by default.
         self.docmap: dict[int, dict] = {}
         self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
@@ -34,9 +35,17 @@ class InvertedIndex:
             pickle.dump(self.index, f)
         with open(self.docmap_path, "wb") as f:
             pickle.dump(self.docmap, f)
+    
+    def load(self):
+        with open(self.index_path, "rb") as f:
+            self.index = pickle.load(f)
+        with open(self.docmap_path, "rb") as f:
+            self.docmap = pickle.load(f)
 
     def get_documents(self, term: str) -> list[int]:
-        doc_ids = self.index.get(term, set())
+        doc_ids = self.index.get(term, set()) # Here, if term isn’t in the index, you get an empty set() instead of a KeyError.
+                                              # Although with defaultdict(set): doc_ids = self.index[term] already gives a set or creates one
+                                              # And if using a plain dict: doc_ids = self.index[term] if term in self.index else set()
         return sorted(list(doc_ids))
 
     def __add_document(self, doc_id: int, text: str) -> None:
@@ -49,20 +58,23 @@ def build_command() -> None:
     idx = InvertedIndex()
     idx.build()
     idx.save()
-    docs = idx.get_documents("merida")
-    print(f"First document for token 'merida' = {docs[0]}")
     
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
-    movies = load_movies()
-    results = []
-    for movie in movies:
-        query_tokens = tokenize_text(query)
-        title_tokens = tokenize_text(movie["title"])
-        if has_matching_token(query_tokens, title_tokens):
-            results.append(movie)
+    idx = InvertedIndex()
+    idx.load()
+    query_tokens = tokenize_text(query)
+    seen, results = set(), []
+    for query_token in query_tokens:
+        matching_doc_ids = idx.get_documents(query_token)
+        for doc_id in matching_doc_ids:
+            if doc_id in seen:  # avoids having repeats of movie results
+                continue
+            seen.add(doc_id)
+            doc = idx.docmap[doc_id]
+            results.append(doc)
             if len(results) >= limit:
-                break
+                return results
 
     return results
 
