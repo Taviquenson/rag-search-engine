@@ -67,7 +67,7 @@ class InvertedIndex:
         # The same behaviour can be achieved with just this line of code:
         self.term_frequencies[doc_id].update(tokens) # Works like dict.update() but adds counts instead of replacing them
 
-    def get_tf(self, doc_id, term) -> int:
+    def get_tf(self, doc_id: int, term: str) -> int:
         # Tokenize the term, but assume that there is only one token.
         tokens = tokenize_text(term)
         if len(tokens) != 1:  # If there's more than one, raise an exception.
@@ -80,7 +80,7 @@ class InvertedIndex:
         # I guess by default the behaviour below where 0 is returned if term isn't in the Counter dict is implemented as well via defaultdict(Counter)
         # return self.term_frequencies[doc_id].get(token, 0)
 
-    def get_idf(self, term) -> float:
+    def get_idf(self, term: str) -> float:
         # Tokenize the term, but assume that there is only one token.
         tokens = tokenize_text(term)
         if len(tokens) != 1:  # If there's more than one, raise an exception.
@@ -89,7 +89,12 @@ class InvertedIndex:
         # Calculate the IDF for the given term
         doc_count = len(self.docmap)
         term_doc_count = len(self.index[token])
-        return math.log((doc_count + 1) / (term_doc_count + 1)) 
+        return math.log((doc_count + 1) / (term_doc_count + 1))
+    
+    def get_tf_idf(self, doc_id: int, term: str) -> float:
+        tf = self.get_tf(doc_id, term)
+        idf = self.get_idf(term)
+        return tf * idf
 
 def build_command() -> None:
     idx = InvertedIndex()
@@ -124,6 +129,11 @@ def idf_command(term: str) -> float:
     idx = InvertedIndex()
     idx.load()
     return idx.get_idf(term)
+
+def tfidf_command(doc_id: int, term: str) -> float:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_tf_idf(doc_id, term)
 
 def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool:
     for query_token in query_tokens:
