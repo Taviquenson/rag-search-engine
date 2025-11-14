@@ -1,3 +1,4 @@
+import math
 import os
 import pickle
 import string
@@ -55,14 +56,14 @@ class InvertedIndex:
         return sorted(list(doc_ids))
 
     def __add_document(self, doc_id: int, text: str) -> None:
-        cnt = Counter()
         tokens = tokenize_text(text)
         for token in set(tokens):
             self.index[token].add(doc_id)
+        # cnt = Counter()
         # for token in tokens:
         #     cnt[token] += 1
         # self.term_frequencies[doc_id] = cnt
-        # Since Counter is built for routines like the above 3 lines of code
+        # Since Counter is built for routines like the above 4 lines of code
         # The same behaviour can be achieved with just this line of code:
         self.term_frequencies[doc_id].update(tokens) # Works like dict.update() but adds counts instead of replacing them
 
@@ -79,6 +80,16 @@ class InvertedIndex:
         # I guess by default the behaviour below where 0 is returned if term isn't in the Counter dict is implemented as well via defaultdict(Counter)
         # return self.term_frequencies[doc_id].get(token, 0)
 
+    def get_idf(self, term) -> float:
+        # Tokenize the term, but assume that there is only one token.
+        tokens = tokenize_text(term)
+        if len(tokens) != 1:  # If there's more than one, raise an exception.
+            raise Exception("term must be a single token")
+        token = tokens[0]
+        # Calculate the IDF for the given term
+        doc_count = len(self.docmap)
+        term_doc_count = len(self.index[token])
+        return math.log((doc_count + 1) / (term_doc_count + 1)) 
 
 def build_command() -> None:
     idx = InvertedIndex()
@@ -109,6 +120,10 @@ def tf_command(doc_id: int, term: str) -> int:
     idx.load()
     return idx.get_tf(doc_id, term)
 
+def idf_command(term: str) -> float:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_idf(term)
 
 def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool:
     for query_token in query_tokens:
