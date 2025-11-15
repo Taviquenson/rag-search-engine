@@ -13,6 +13,7 @@ from .search_utils import (
     BM25_B,
     load_movies,
     load_stopwords,
+    format_search_result,
 )
 
 
@@ -20,6 +21,7 @@ class InvertedIndex:
     def __init__(self) -> None:
         self.index = defaultdict(set) # Is like a dict but auto-creates a default value when a missing key is accessed
                                       # Here, each new key gets a set() by default.
+                                      # Maps a term to a set of document IDs
         self.docmap: dict[int, dict] = {} # dict of document IDs to movie objects
         self.term_frequencies = defaultdict(Counter) # Counter is a dictionary optimized for counting
         self.doc_lengths = defaultdict(int)
@@ -133,7 +135,39 @@ class InvertedIndex:
         for doc_length in self.doc_lengths.values(): # REMEMBER, without .values() the keys are returned!
             total_docs_length += doc_length
         return float(total_docs_length / len(self.doc_lengths))
-        
+    
+    def bm25(self, doc_id: int, term: str) -> float:
+        bm25_idf = self.get_bm25_idf(term)
+        bm25_tf = self.get_bm25_tf(doc_id, term)
+        return bm25_tf * bm25_idf
+    
+    def bm25_search(self, query: str, limit: int) -> list[dict]:
+        query_tokens = tokenize_text(query)
+
+        scores = {}  # maps document IDs to their total BM25 scores
+        for doc_id in self.docmap:
+            score = 0.0
+            for token in query_tokens:
+                score += self.bm25(doc_id, token)
+            scores[doc_id] = score
+            
+        # Sort the scores dict in descending order into a list of tuples
+        sorted_docs = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+
+        # Return the top limit documents
+        results = []
+        for doc_id, score in sorted_docs[:limit]:
+            doc = self.docmap[doc_id]
+            formatted_result = format_search_result(
+                doc_id=doc["id"],
+                title=doc["title"],
+                document=doc["description"],
+                score=score,
+            )
+            results.append(formatted_result)
+
+        return results
+
 
 def build_command() -> None:
     idx = InvertedIndex()
@@ -158,6 +192,11 @@ def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
                 return results
 
     return results
+
+def bm25search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.bm25_search(query, limit)
 
 def tf_command(doc_id: int, term: str) -> int:
     idx = InvertedIndex()
