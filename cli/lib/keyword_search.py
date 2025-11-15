@@ -81,9 +81,8 @@ class InvertedIndex:
         # return self.term_frequencies[doc_id].get(token, 0)
 
     def get_idf(self, term: str) -> float:
-        # Tokenize the term, but assume that there is only one token.
         tokens = tokenize_text(term)
-        if len(tokens) != 1:  # If there's more than one, raise an exception.
+        if len(tokens) != 1: 
             raise Exception("term must be a single token")
         token = tokens[0]
         # Calculate the IDF for the given term
@@ -95,6 +94,16 @@ class InvertedIndex:
         tf = self.get_tf(doc_id, term)
         idf = self.get_idf(term)
         return tf * idf
+    
+    def get_bm25_idf(self, term: str) -> float:
+        tokens = tokenize_text(term)
+        if len(tokens) != 1:
+            raise Exception("term must be a single token")
+        token = tokens[0]
+        # Calculate the BM245 IDF for the given term
+        doc_count = len(self.docmap)
+        term_doc_count = len(self.index[token])
+        return math.log((doc_count - term_doc_count + 0.5) / (term_doc_count + 0.5) +1)
 
 def build_command() -> None:
     idx = InvertedIndex()
@@ -134,6 +143,11 @@ def tfidf_command(doc_id: int, term: str) -> float:
     idx = InvertedIndex()
     idx.load()
     return idx.get_tf_idf(doc_id, term)
+
+def bm25_idf_command(term: str) -> float:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_bm25_idf(term)
 
 def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool:
     for query_token in query_tokens:
