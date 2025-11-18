@@ -1,4 +1,5 @@
 import os
+import re
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
@@ -7,6 +8,7 @@ from .search_utils import(
  DEFAULT_CHUNK_OVERLAP,
  DEFAULT_CHUNK_SIZE,
  DEFAULT_SEARCH_LIMIT,
+ DEFAULT_SEMANTIC_CHUNK_SIZE,
  load_movies
 )
 
@@ -137,8 +139,7 @@ def fixed_size_chunking(
     overlap: int = DEFAULT_CHUNK_OVERLAP
 ) -> list[str]:
     words = text.split()
-    chunks = []
-    
+    chunks = []    
     i = 0
     while i < len(words):
         chunk_words = words[i : i + chunk_size]
@@ -151,15 +152,44 @@ def fixed_size_chunking(
                   # OR append an empty chunk
         chunks.append(" ".join(chunk_words))
         i += chunk_size - overlap
-
     return chunks
+
 
 def chunk_text(
     text: str,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
-    overlap: int = DEFAULT_CHUNK_OVERLAP
+    overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> None:
     chunks = fixed_size_chunking(text, chunk_size, overlap)
     print(f"Chunking {len(text)} characters")
+    for i, chunk in enumerate(chunks):
+        print(f"{i + 1}. {chunk}")
+
+
+def semantic_chunking(
+    text: str,
+    max_chunk_size: int = DEFAULT_CHUNK_SIZE,
+    overlap: int = DEFAULT_CHUNK_OVERLAP
+) -> list[str]:
+    sentences = re.split(r'(?<=[.!?])\s+', text) 
+    # The regex splits on whitespace following a period, question mark, or exclamation point.
+    # (?<=[.!?]) is a positive lookbehind assertion, ensuring the punctuation is kept.
+    chunks = []
+    i = 0
+    while i < len(sentences):
+        chunk_sentences = sentences[i : i + max_chunk_size]
+        if chunks and len(chunk_sentences) <= overlap: # avoids a redundant or empty final chunk
+            break
+        chunks.append(" ".join(chunk_sentences))
+        i += max_chunk_size - overlap
+    return chunks
+
+def semantic_chunk_text(
+    text: str,
+    max_chunk_size: int = DEFAULT_SEMANTIC_CHUNK_SIZE,
+    overlap: int = DEFAULT_CHUNK_OVERLAP,
+) -> None:
+    chunks = semantic_chunking(text, max_chunk_size, overlap)
+    print(f"Semantically chunking {len(text)} characters")
     for i, chunk in enumerate(chunks):
         print(f"{i + 1}. {chunk}")
