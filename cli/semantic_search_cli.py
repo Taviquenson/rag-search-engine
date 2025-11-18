@@ -3,7 +3,11 @@
 import argparse
 
 from lib.semantic_search import (
-    verify_model, verify_embeddings, embed_text, embed_query_text, semantic_search
+    verify_model,
+    verify_embeddings,
+    embed_text, embed_query_text,
+    semantic_search,
+    chunk_text
 )
 
 def main():
@@ -24,6 +28,11 @@ def main():
     search_parser.add_argument("query", type=str, help="Search query")
     search_parser.add_argument("--limit", type=int, nargs='?', default=5, help="Maximum number of results to return")
 
+    chunk_parser = subparsers.add_parser("chunk", help="Split text into fixed-size chunks")
+    chunk_parser.add_argument("text", type=str, help="Text to chunk")
+    chunk_parser.add_argument("--chunk-size", type=int, nargs='?', default=200, help="Size of each chunk in words")
+
+
     args = parser.parse_args()
 
     match args.command:
@@ -37,6 +46,8 @@ def main():
             embed_query_text(args.query)
         case "search":
             semantic_search(args.query)
+        case "chunk":
+            chunk_text(args.text, args.chunk_size)
         case _:
             parser.print_help()
 

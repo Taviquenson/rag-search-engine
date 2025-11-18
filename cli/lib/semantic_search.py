@@ -2,7 +2,12 @@ import os
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
-from .search_utils import CACHE_DIR, DEFAULT_SEARCH_LIMIT, load_movies
+from .search_utils import(
+ CACHE_DIR,
+ DEFAULT_CHUNK_SIZE,
+ DEFAULT_SEARCH_LIMIT,
+ load_movies
+)
 
 MOVIE_EMBEDDINGS_PATH = os.path.join(CACHE_DIR, "movie_embeddings.npy")
 
@@ -124,3 +129,21 @@ def semantic_search(query, limit=DEFAULT_SEARCH_LIMIT):
         print(f"{i}. {res['title']} (score: {res['score']:.4f})")
         print(f"   {res['description'][:100]}..." )
         print()
+
+def fixed_size_chunking(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> list[str]:
+    words = text.split()
+    chunks = []
+    
+    i = 0
+    while i < len(words):
+        chunk_words = words[i : i + chunk_size]
+        chunks.append(" ".join(chunk_words))
+        i += chunk_size
+
+    return chunks
+
+def chunk_text(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> None:
+    chunks = fixed_size_chunking(text, chunk_size)
+    print(f"Chunking {len(text)} characters")
+    for i, chunk in enumerate(chunks):
+        print(f"{i + 1}. {chunk}")
