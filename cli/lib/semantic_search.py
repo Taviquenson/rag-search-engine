@@ -172,20 +172,38 @@ def chunk_text(
 
 def semantic_chunk(
     text: str,
-    max_chunk_size: int = DEFAULT_CHUNK_SIZE,
-    overlap: int = DEFAULT_CHUNK_OVERLAP
+    max_chunk_size: int = DEFAULT_SEMANTIC_CHUNK_SIZE,
+    overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> list[str]:
-    sentences = re.split(r'(?<=[.!?])\s+', text) 
+    text = text.strip()
+    if not text:
+        return []
+    
     # The regex splits on whitespace following a period, question mark, or exclamation point.
     # (?<=[.!?]) is a positive lookbehind assertion, ensuring the punctuation is kept.
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+
+    if len(sentences) == 1 and not text.endswith((".", "!", "?")):
+        sentences = [text]
+
     chunks = []
     i = 0
-    while i < len(sentences):
+    n_sentences = len(sentences)
+
+    while i < n_sentences:
         chunk_sentences = sentences[i : i + max_chunk_size]
         if chunks and len(chunk_sentences) <= overlap: # avoids a redundant or empty final chunk
             break
-        chunks.append(" ".join(chunk_sentences))
+
+        cleaned_sentences = []
+        for chunk_sentence in chunk_sentences:
+            cleaned_sentences.append(chunk_sentence.strip())
+        if not cleaned_sentences: # avoids adding a completely empty chunk
+            continue
+        chunk = " ".join(cleaned_sentences)
+        chunks.append(chunk)
         i += max_chunk_size - overlap
+
     return chunks
 
 def semantic_chunk_text(
