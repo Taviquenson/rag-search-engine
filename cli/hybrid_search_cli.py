@@ -2,7 +2,8 @@ import argparse
 
 from lib.hybrid_search import (
     normalize_scores,
-    weighted_search_command
+    weighted_search_command,
+    rrf_search_command,
 )
 
 def main() -> None:
@@ -16,6 +17,12 @@ def main() -> None:
     weighted_parser.add_argument("query", type=str, help="Search query")
     weighted_parser.add_argument("--alpha", type=float, default=0.5, help="Weight for BM25 vs semantic (0=all semantic, 1=all BM25, default=0.5)")
     weighted_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Number of results to return (default=5)")
+
+    rrf_parser = subparsers.add_parser("rrf-search", help="Perform rrf hybrid search")
+    rrf_parser.add_argument("query", type=str, help="Search query")
+    rrf_parser.add_argument("--k", type=float, default=60, help="Weigh given to higher-ranked results vs. lower-ranked ones")
+    rrf_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Number of results to return (default=5)")
+
 
     args = parser.parse_args()
 
@@ -39,6 +46,18 @@ def main() -> None:
                 if "bm25_score" in metadata and "semantic_score" in metadata:
                     print(
                         f"   BM25: {metadata['bm25_score']:.3f}, Semantic: {metadata['semantic_score']:.3f}"
+                    )
+                print(f"   {res['document'][:100]}...")
+                print()
+        case "rrf-search":
+            result = rrf_search_command(args.query, args.k, args.limit)
+            for i, res in enumerate(result["results"], 1):
+                print(f"{i}. {res['title']}")
+                print(f"   RRF Score: {res.get('score', 0):.8f}")
+                metadata = res.get("metadata", {})
+                if "bm25_score" in metadata and "semantic_score" in metadata:
+                    print(
+                        f"   BM25 Rank: {metadata['bm25_score']:.3f}, Semantic rank: {metadata['semantic_score']:.3f}"
                     )
                 print(f"   {res['document'][:100]}...")
                 print()

@@ -11,6 +11,7 @@ from .search_utils import (
     DEFAULT_SEARCH_LIMIT,
     BM25_K1,
     BM25_B,
+    DOCUMENT_PREVIEW_LENGTH,
     load_movies,
     load_stopwords,
     format_search_result,
@@ -161,7 +162,7 @@ class InvertedIndex:
             formatted_result = format_search_result(
                 doc_id=doc["id"],
                 title=doc["title"],
-                document=doc["description"],
+                document=doc["description"][:DOCUMENT_PREVIEW_LENGTH]+"...",
                 score=score,
             )
             results.append(formatted_result)

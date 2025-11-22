@@ -2,6 +2,8 @@ import json
 import os
 from typing import Any
 
+DEFAULT_K = 60.0
+
 DEFAULT_ALPHA = 0.5
 
 DEFAULT_SEARCH_LIMIT = 5
@@ -54,6 +56,6 @@ def format_search_result(
         "id": doc_id,
         "title": title,
         "document": document,
-        "score": round(score, SCORE_PRECISION),
+        "score": score,
         "metadata": metadata if metadata else {},
     }

@@ -321,7 +321,7 @@ class ChunkedSemanticSearch(SemanticSearch):
                 format_search_result(
                         doc["id"],
                         doc["title"],
-                        doc["description"][:DOCUMENT_PREVIEW_LENGTH],
+                        doc["description"][:DOCUMENT_PREVIEW_LENGTH]+"...",
                         score,
                 )
             )
