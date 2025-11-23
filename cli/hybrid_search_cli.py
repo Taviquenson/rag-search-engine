@@ -1,4 +1,8 @@
 import argparse
+import os
+from google import genai
+from dotenv import load_dotenv
+
 
 from lib.hybrid_search import (
     normalize_scores,
@@ -22,6 +26,7 @@ def main() -> None:
     rrf_parser.add_argument("query", type=str, help="Search query")
     rrf_parser.add_argument("-k", type=int, default=60, help="RRF k parameter controlling weight distribution (default=60)")
     rrf_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Number of results to return (default=5)")
+    rrf_parser.add_argument("--enhance", type=str, choices=["spell"], help="Query enhancement method")
 
 
     args = parser.parse_args()
@@ -50,8 +55,12 @@ def main() -> None:
                 print(f"   {res['document'][:100]}...")
                 print()
         case "rrf-search":
-            result = rrf_search_command(args.query, args.k, args.limit)
+            result = rrf_search_command(args.query, args.k, args.enhance, args.limit)
 
+            if result["enhanced_query"]:
+                print(
+                    f"Enhanced query ({result['enhance_method']}): '{result['original_query']}' -> '{result['enhanced_query']}'\n"
+                )
             print(
                 f"Reciprocal Rank Fusion Results for '{result['query']}' (k={result['k']}):"
             )
