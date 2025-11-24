@@ -26,7 +26,7 @@ def main() -> None:
     rrf_parser.add_argument("query", type=str, help="Search query")
     rrf_parser.add_argument("-k", type=int, default=60, help="RRF k parameter controlling weight distribution (default=60)")
     rrf_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Number of results to return (default=5)")
-    rrf_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch"], help="Reranking method")
+    rrf_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", "cross_encoder"], help="Reranking method")
     rrf_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
 
     args = parser.parse_args()
@@ -79,6 +79,8 @@ def main() -> None:
                     print(f"   Rerank Score: {res.get('individual_score', 0):.3f}/10")
                 if "batch_rank" in res:
                     print(f"   Rerank Rank: {res.get('batch_rank', 0)}")
+                if "crossencoder_score" in res:
+                    print(f"   Cross Encoder Score: {res.get('crossencoder_score', 0):.3f}")
                 print(f"   RRF Score: {res.get('score', 0):.3f}")
                 metadata = res.get("metadata", {})
                 ranks = []

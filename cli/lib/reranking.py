@@ -2,6 +2,7 @@ import json
 import os
 from time import sleep
 
+from sentence_transformers import CrossEncoder
 from dotenv import load_dotenv
 from google import genai
 
@@ -9,6 +10,7 @@ load_dotenv()
 api_key = os.getenv("gemini_api_key")
 client = genai.Client(api_key=api_key)
 model = "gemini-2.0-flash"
+cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
 
 
 def llm_rerank_individual(query: str, documents: list[dict], limit: int = 5) -> list[dict]:
@@ -90,11 +92,28 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
     return reranked[:limit]
 
 
+def cross_encoder_rerank(query: str, documents: list[dict], limit: int = 5) -> list[dict]:
+    pairs = []
+    for doc in documents:
+        pairs.append([query, f"{doc.get('title', '')} - {doc.get('document', '')}"])
+
+    scores = cross_encoder.predict(pairs)     # list of numbers, one for each pair
+
+    for doc, score in zip(documents, scores):
+        doc["crossencoder_score"] = float(score)
+
+    # return results sort by the new score in descending order
+    documents.sort(key=lambda x: x["crossencoder_score"], reverse=True)
+    return documents[:limit]
+
+
 def rerank(query: str, documents: list[dict], method: str = "batch", limit: int = 5) -> list[dict]:
     match method:
         case "individual":
             return llm_rerank_individual(query, documents, limit)
         case "batch":
             return llm_rerank_batch(query, documents, limit)
+        case "cross_encoder":
+            return cross_encoder_rerank(query, documents, limit)
         case _:
             return documents[:limit]
