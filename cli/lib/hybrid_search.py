@@ -43,9 +43,9 @@ class HybridSearch:
         fused = reciprocal_rank_fusion(bm25_results, semantic_results, k)
         return fused[:limit]
 
+
 def rrf_score(rank, k=60):
     return 1 / (k + rank)
-
 
 def reciprocal_rank_fusion(
     bm25_results: list[dict], semantic_results: list[dict], k: float = RRF_K
