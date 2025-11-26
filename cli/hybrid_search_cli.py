@@ -28,6 +28,8 @@ def main() -> None:
     rrf_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Number of results to return (default=5)")
     rrf_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", "cross_encoder"], help="Reranking method")
     rrf_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
+    rrf_parser.add_argument("--evaluate", action="store_true", help="Enable final results evaluation by LLM (default: False)")
+
 
     args = parser.parse_args()
 
@@ -56,7 +58,7 @@ def main() -> None:
                 print()
         case "rrf-search":
             result = rrf_search_command(
-                args.query, args.k, args.enhance, args.rerank_method, args.limit
+                args.query, args.k, args.enhance, args.rerank_method, args.limit, args.evaluate
             )
 
             if result["enhanced_query"]:
@@ -92,6 +94,11 @@ def main() -> None:
                     print(f"   {', '.join(ranks)}")
                 print(f"   {res['document'][:100]}...")
                 print()
+            
+            if result["evaluate"]:
+                print("Final evaluation report by LLM:")
+                for i, eval in enumerate(result["evals"], 1):
+                    print(f"{i}. {eval["title"]}: {eval["rating"]}/3")
         case _:
             parser.print_help()
 

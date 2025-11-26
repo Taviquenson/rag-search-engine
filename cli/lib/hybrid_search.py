@@ -13,6 +13,7 @@ from .search_utils import (
     load_movies,
 )
 from .semantic_search import ChunkedSemanticSearch
+from .evaluate import llm_evaluation
 
 
 class HybridSearch:
@@ -205,23 +206,36 @@ def rrf_search_command(
     enhance: Optional[str] = None,
     rerank_method: Optional[str] = None,
     limit: int = DEFAULT_SEARCH_LIMIT,
+    evaluate: bool = False,
 ) -> dict:
     movies = load_movies()
     searcher = HybridSearch(movies)
-
+    
+    # print(f"rrf initial query: {query}")
     original_query = query
     enhanced_query = None
     if enhance:
         enhanced_query = enhance_query(query, method=enhance)
+        # print(f"enhanced query: {enhanced_query}")
         query = enhanced_query
 
     search_limit = limit * SEARCH_MULTIPLIER if rerank_method else limit
     results = searcher.rrf_search(query, k, search_limit)
-
+    # print("results after rrf search:")
+    # for result in results:
+    #     print(f"- {result["title"]}")
+    # print()
     reranked = False
     if rerank_method:
         results = rerank(query, results, method=rerank_method, limit=limit)
         reranked = True
+        # print("results after reranking:")
+        # for result in results:
+        #     print(f"- {result["title"]}")
+    # print()
+    
+    if evaluate:
+        evals = llm_evaluation(query, results)
 
     return {
         "original_query": original_query,
@@ -232,4 +246,6 @@ def rrf_search_command(
         "rerank_method": rerank_method,
         "reranked": reranked,
         "results": results,
+        "evaluate": evaluate,
+        "evals": evals,
     }

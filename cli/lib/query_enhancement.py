@@ -24,6 +24,7 @@ Corrected:"""
     corrected = (response.text or "").strip().strip('"')
     return corrected if corrected else query
 
+
 def rewrite(query: str) -> str:
     prompt = f"""Rewrite this movie search query to be more specific and searchable.
 
@@ -48,6 +49,7 @@ Rewritten query:"""
     rewritten = (response.text or "").strip().strip('"')
     return rewritten if rewritten else query
 
+
 def expand(query: str) -> str:
     prompt = f"""Expand this movie search query with related terms.
 
@@ -67,8 +69,6 @@ Query: "{query}"
     response = client.models.generate_content(model=model, contents=prompt)
     expanded_terms = (response.text or "").strip().strip('"')
     return f"{query} {expanded_terms}"
-
-
 
 
 def enhance_query(query: str, method: Optional[str] = None) -> str:
