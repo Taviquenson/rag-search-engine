@@ -39,10 +39,9 @@ def load_stopwords() -> list[str]:
     with open(STOPWORDS_PATH, "r") as f:
         return f.read().splitlines()
     
-def load_golden_dataset() -> list[dict]:
+def load_golden_dataset() -> dict:
     with open(GOLDEN_DATASET_PATH, "r") as f:
-        data = json.load(f)
-    return data["test_cases"]
+        return json.load(f)
     
 def format_search_result(
     doc_id: str, title: str, document: str, score: float, **metadata: Any
