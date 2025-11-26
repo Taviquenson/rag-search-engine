@@ -14,8 +14,9 @@ from .search_utils import (
 )
 from .semantic_search import ChunkedSemanticSearch
 
+
 class HybridSearch:
-    def __init__(self, documents):
+    def __init__(self, documents: list[dict]) -> None:
         self.documents = documents
         self.semantic_search = ChunkedSemanticSearch()
         self.semantic_search.load_or_create_chunk_embeddings(documents)
@@ -36,22 +37,104 @@ class HybridSearch:
         combined = combine_search_results(bm25_results, semantic_results, alpha)
         return combined[:limit]
 
-    def rrf_search(self, query: str, k: float, limit: int=5):
-        bm25_results = self._bm25_search(query, limit*500)
+    def rrf_search(self, query: str, k: int, limit: int = 10) -> list[dict]:
+        bm25_results = self._bm25_search(query, limit * 500)
         semantic_results = self.semantic_search.search_chunks(query, limit * 500)
-        
+
         fused = reciprocal_rank_fusion(bm25_results, semantic_results, k)
         return fused[:limit]
 
 
-def rrf_score(rank, k=60):
+def normalize_scores(scores: list[float]) -> list[float]:
+    if not scores:
+        return []
+
+    min_score = min(scores)
+    max_score = max(scores)
+
+    if max_score == min_score:
+        return [1.0] * len(scores)
+
+    normalized_scores = []
+    for s in scores:
+        normalized_scores.append((s - min_score) / (max_score - min_score))
+    return normalized_scores
+
+
+def normalize_search_results(results: list[dict]) -> list[dict]:
+    scores: list[float] = []
+    for result in results:
+        scores.append(result["score"])
+
+    normalized: list[float] = normalize_scores(scores)
+    for i, result in enumerate(results):
+        result["normalized_score"] = normalized[i]
+
+    return results
+
+
+def hybrid_score(
+    bm25_score: float, semantic_score: float, alpha: float = DEFAULT_ALPHA
+) -> float:
+    return alpha * bm25_score + (1 - alpha) * semantic_score
+
+
+def combine_search_results(
+    bm25_results: list[dict], semantic_results: list[dict], alpha: float = DEFAULT_ALPHA
+) -> list[dict]:
+    bm25_normalized = normalize_search_results(bm25_results)
+    semantic_normalized = normalize_search_results(semantic_results)
+
+    combined_scores = {}
+
+    for result in bm25_normalized:
+        doc_id = result["id"]
+        if doc_id not in combined_scores:
+            combined_scores[doc_id] = {
+                "title": result["title"],
+                "document": result["document"],
+                "bm25_score": 0.0,
+                "semantic_score": 0.0,
+            }
+        if result["normalized_score"] > combined_scores[doc_id]["bm25_score"]:
+            combined_scores[doc_id]["bm25_score"] = result["normalized_score"]
+
+    for result in semantic_normalized:
+        doc_id = result["id"]
+        if doc_id not in combined_scores:
+            combined_scores[doc_id] = {
+                "title": result["title"],
+                "document": result["document"],
+                "bm25_score": 0.0,
+                "semantic_score": 0.0,
+            }
+        if result["normalized_score"] > combined_scores[doc_id]["semantic_score"]:
+            combined_scores[doc_id]["semantic_score"] = result["normalized_score"]
+
+    hybrid_results = []
+    for doc_id, data in combined_scores.items():
+        score_value = hybrid_score(data["bm25_score"], data["semantic_score"], alpha)
+        result = format_search_result(
+            doc_id=doc_id,
+            title=data["title"],
+            document=data["document"],
+            score=score_value,
+            bm25_score=data["bm25_score"],
+            semantic_score=data["semantic_score"],
+        )
+        hybrid_results.append(result)
+
+    return sorted(hybrid_results, key=lambda x: x["score"], reverse=True)
+
+
+def rrf_score(rank: int, k: int = RRF_K) -> float:
     return 1 / (k + rank)
 
+
 def reciprocal_rank_fusion(
-    bm25_results: list[dict], semantic_results: list[dict], k: float = RRF_K
+    bm25_results: list[dict], semantic_results: list[dict], k: int = RRF_K
 ) -> list[dict]:
     rrf_scores = {}
-
 
     for rank, result in enumerate(bm25_results, start=1):
         doc_id = result["id"]
@@ -97,87 +180,6 @@ def reciprocal_rank_fusion(
     return sorted(rrf_results, key=lambda x: x["score"], reverse=True)
 
 
-def normalize_scores(scores):
-    if not scores:
-        return []
-    
-    max_score = max(scores)
-    min_score = min(scores)
-
-    if max_score == min_score:
-        return [1.0] * len(scores) # returns a list of the same length as `scores`
-    
-    normalized_scores = []
-    for score in scores:
-        normalized_scores.append( (score - min_score) / (max_score - min_score) )
-    
-    return normalized_scores
-
-
-def normalize_search_results(results: list[dict]) -> list[dict]:
-    scores: list[float] = []
-    for result in results:
-        scores.append(result["score"])
-
-    normalized: list[float] = normalize_scores(scores)
-    for i, result in enumerate(results):
-        result["normalized_score"] = normalized[i]
-
-    return results
-
-
-def hybrid_score(bm25_score, semantic_score, alpha=0.5):
-    return alpha * bm25_score + (1 - alpha) * semantic_score 
-
-
-def combine_search_results(
-    bm25_results: list[dict], semantic_results: list[dict], alpha: float = DEFAULT_ALPHA
-) -> list[dict]:
-    bm25_normalized = normalize_search_results(bm25_results)
-    semantic_normalized = normalize_search_results(semantic_results)
-
-    combined_scores = {}
-
-    for result in bm25_normalized:
-        doc_id = result["id"]
-        if doc_id not in combined_scores:
-            combined_scores[doc_id] = {
-                "title": result["title"],
-                "document": result["document"],
-                "bm25_score": 0.0,
-                "semantic_score": 0.0,
-            }
-        if result["normalized_score"] > combined_scores[doc_id]["bm25_score"]:
-            combined_scores[doc_id]["bm25_score"] = result["normalized_score"]
-
-    for result in semantic_normalized:
-        doc_id = result["id"]
-        if doc_id not in combined_scores:
-            combined_scores[doc_id] = {
-                "title": result["title"],
-                "document": result["document"],
-                "bm25_score": 0.0,
-                "semantic_score": 0.0,
-            }
-        if result["normalized_score"] > combined_scores[doc_id]["semantic_score"]:
-            combined_scores[doc_id]["semantic_score"] = result["normalized_score"]
-
-    hybrid_results = []
-    for doc_id, data in combined_scores.items():
-        score_value = hybrid_score(data["bm25_score"], data["semantic_score"], alpha)
-        result = format_search_result(
-            doc_id=doc_id,
-            title=data["title"],
-            document=data["document"],
-            score=score_value,                      # Notice how following 2 elements
-            bm25_score=data["bm25_score"],          # will be aggregated inside of the
-            semantic_score=data["semantic_score"],  # `metadata` dict of format_search_result()
-        )
-        hybrid_results.append(result)
-
-    return sorted(hybrid_results, key=lambda x: x["score"], reverse=True)
-
-
 def weighted_search_command(
     query: str, alpha: float = DEFAULT_ALPHA, limit: int = DEFAULT_SEARCH_LIMIT
 ) -> dict:
@@ -195,6 +197,7 @@ def weighted_search_command(
         "alpha": alpha,
         "results": results,
     }
+
 
 def rrf_search_command(
     query: str,
